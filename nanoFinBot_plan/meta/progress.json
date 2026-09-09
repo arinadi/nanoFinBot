@@ -1,0 +1,262 @@
+{
+  "project": "nanoFinBot",
+  "mode": "cli-tool",
+  "design_doc": false,
+  "current_phase": 4,
+  "phases": {
+    "0": {
+      "status": "approved",
+      "completed_at": "2026-09-09T00:00:00Z"
+    },
+    "1": {
+      "status": "approved",
+      "completed_at": "2026-09-09T00:00:00Z"
+    },
+    "2": {
+      "status": "approved",
+      "completed_at": "2026-09-09T00:00:00Z"
+    },
+    "3": {
+      "status": "approved",
+      "completed_at": "2026-09-09T00:00:00Z"
+    },
+    "4": {
+      "status": "approved",
+      "completed_at": "2026-09-09T00:00:00Z"
+    }
+  },
+  "nanotasks": [
+    {
+      "id": "00.1",
+      "behavior": "System installs and exposes the nfb command from a clean checkout.",
+      "status": "passing",
+      "depends_on": []
+    },
+    {
+      "id": "00.2",
+      "behavior": "User can install nanoFinBot by running install.py.",
+      "status": "passing",
+      "depends_on": [
+        "00.1"
+      ]
+    },
+    {
+      "id": "00.3",
+      "behavior": "System runs the test suite with a passing placeholder test.",
+      "status": "passing",
+      "depends_on": [
+        "00.1"
+      ]
+    },
+    {
+      "id": "01",
+      "behavior": "User can configure the bot token and group id by running nfb setup.",
+      "status": "passing",
+      "depends_on": [
+        "00.1"
+      ]
+    },
+    {
+      "id": "02",
+      "behavior": "System persists transactions in SQLite on first run.",
+      "status": "passing",
+      "depends_on": [
+        "01"
+      ]
+    },
+    {
+      "id": "03",
+      "behavior": "System sends a status message to the group when the bot starts.",
+      "status": "passing",
+      "depends_on": [
+        "01"
+      ]
+    },
+    {
+      "id": "04",
+      "behavior": "System calls a configured OpenAI-compatible endpoint and returns the completion.",
+      "status": "passing",
+      "depends_on": [
+        "01"
+      ]
+    },
+    {
+      "id": "05",
+      "behavior": "System parses a text expense message into a draft.",
+      "status": "passing",
+      "depends_on": [
+        "01"
+      ]
+    },
+    {
+      "id": "06",
+      "behavior": "System assigns a category to a draft using the configured LLM provider.",
+      "status": "passing",
+      "depends_on": [
+        "04",
+        "05"
+      ]
+    },
+    {
+      "id": "07",
+      "behavior": "System produces a draft from a receipt photo.",
+      "status": "passing",
+      "depends_on": [
+        "01",
+        "04"
+      ]
+    },
+    {
+      "id": "08.1",
+      "behavior": "User can save a draft as an immutable transaction.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "03",
+        "05",
+        "06",
+        "07"
+      ]
+    },
+    {
+      "id": "08.2",
+      "behavior": "User can edit a draft before saving.",
+      "status": "passing",
+      "depends_on": [
+        "08.1"
+      ]
+    },
+    {
+      "id": "08.3",
+      "behavior": "User can cancel a draft.",
+      "status": "passing",
+      "depends_on": [
+        "08.1"
+      ]
+    },
+    {
+      "id": "09",
+      "behavior": "User can disable a saved transaction to exclude it from reports.",
+      "status": "passing",
+      "depends_on": [
+        "08.1"
+      ]
+    },
+    {
+      "id": "10",
+      "behavior": "System queues multiple photos and presents their drafts one by one.",
+      "status": "passing",
+      "depends_on": [
+        "07",
+        "08.3"
+      ]
+    },
+    {
+      "id": "11.1",
+      "behavior": "System creates a category when the bot categorizes a draft.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "06"
+      ]
+    },
+    {
+      "id": "11.2",
+      "behavior": "User can rename a category.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "03"
+      ]
+    },
+    {
+      "id": "12.1",
+      "behavior": "User can request a PDF report and receive it as a Telegram document.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "03",
+        "09"
+      ]
+    },
+    {
+      "id": "12.2",
+      "behavior": "User can request a CSV export and receive it as a Telegram document.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "03",
+        "09"
+      ]
+    },
+    {
+      "id": "13.1",
+      "behavior": "User can define a recurring item.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "03"
+      ]
+    },
+    {
+      "id": "13.2",
+      "behavior": "System reminds the group when a recurring item is due.",
+      "status": "passing",
+      "depends_on": [
+        "02",
+        "03",
+        "13.1"
+      ]
+    },
+    {
+      "id": "14",
+      "behavior": "User can set the provider and model from Telegram button menus.",
+      "status": "passing",
+      "depends_on": [
+        "01",
+        "03"
+      ]
+    },
+    {
+      "id": "15",
+      "behavior": "User can run nanoFinBot from the GHCR image.",
+      "status": "blocked",
+      "depends_on": [
+        "14"
+      ],
+      "blocked_reason": "docker runtime not available in this environment; Dockerfile + GHCR workflow written but image build could not be verified"
+    }
+  ],
+  "deferred_features": [
+    {
+      "feature": "budgets and alerts",
+      "reason": "not selected for v1; reports meet the need",
+      "deferred_at": "phase-0"
+    },
+    {
+      "feature": "voice input",
+      "reason": "photo + NL text cover entry",
+      "deferred_at": "phase-0"
+    },
+    {
+      "feature": "web dashboard",
+      "reason": "replaced by on-demand PDF via Telegram",
+      "deferred_at": "phase-0"
+    },
+    {
+      "feature": "currency conversion",
+      "reason": "multi-currency without conversion chosen",
+      "deferred_at": "phase-0"
+    },
+    {
+      "feature": "recurring auto-entry",
+      "reason": "replaced by reminder-only",
+      "deferred_at": "phase-0"
+    },
+    {
+      "feature": "bank API auto-import",
+      "reason": "not requested",
+      "deferred_at": "phase-0"
+    }
+  ]
+}

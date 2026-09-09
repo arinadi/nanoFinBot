@@ -1,0 +1,6 @@
+.venv/
+nanoFinBot_plan/
+tests/
+__pycache__/
+*.pyc
+.git/

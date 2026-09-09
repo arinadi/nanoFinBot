@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nanoFinBot"
+version = "0.1.0"
+description = "On-demand Telegram finance bot: photo and text into an immutable ledger"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "aiogram>=3,<4",
+    "openai>=1,<2",
+    "aiosqlite>=0.20,<0.21",
+    "reportlab>=4,<5",
+    "Pillow>=12,<13",
+    "platformdirs>=4,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+    "pytest-asyncio>=1,<2",
+]
+
+[project.scripts]
+nfb = "nanofinbot.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["nanofinbot*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
