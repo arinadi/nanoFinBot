@@ -31,6 +31,17 @@ def test_setup_parses_group_id(monkeypatch):
     assert saved["cfg"].group_id == 123456
 
 
+def test_setup_negative_group_id(monkeypatch):
+    saved = {}
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt="": "tok")
+    monkeypatch.setattr(builtins, "input", lambda prompt="": "-1001234567890")
+    monkeypatch.setattr(cli, "load_config", lambda: Config())
+    monkeypatch.setattr(cli, "save_config", lambda cfg: saved.update(cfg=cfg))
+
+    assert cli.cmd_setup() == 0
+    assert saved["cfg"].group_id == -1001234567890
+
+
 def test_setup_invalid_group_id_becomes_none(monkeypatch):
     saved = {}
     monkeypatch.setattr(cli.getpass, "getpass", lambda prompt="": "tok")
