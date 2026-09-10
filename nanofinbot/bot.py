@@ -15,7 +15,7 @@ from aiogram.types import (
     Message,
 )
 
-from nanofinbot import __version__, capture, categories, db, recurring, reports, settings
+from nanofinbot import capture, categories, db, recurring, reports, settings
 from nanofinbot.config import Config, save_config
 from nanofinbot.provider import Provider
 from nanofinbot.security import AuthMiddleware
@@ -31,7 +31,7 @@ async def startup(bot: Bot, cfg: Config) -> None:
     """Send exactly one status message to the configured group on start."""
     if cfg.group_id is None:
         return
-    await bot.send_message(cfg.group_id, f"nanoFinBot {__version__} online")
+    await bot.send_message(cfg.group_id, "nanoFinBot ready")
 
 
 def _current_month_range() -> tuple[str, str]:
