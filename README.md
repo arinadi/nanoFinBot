@@ -40,6 +40,76 @@ nfb setup
 nfb run
 ```
 
+## Setup: bot token and group
+
+nanoFinBot only answers inside one Telegram group, so it needs a bot token and
+that group's chat id.
+
+1. Create the bot — open [@BotFather](https://t.me/BotFather) and send:
+
+   ```
+   /newbot
+   ```
+
+   Follow the prompts (name + username). BotFather replies with the **token** —
+   keep it secret.
+
+2. Create the group — in Telegram, "New Group", add your bot to it, and make the
+   bot an **admin** (so it can read messages).
+
+3. Get the group chat id — add [@RawDataBot](https://t.me/RawDataBot) to the group;
+   it posts a JSON message, and the `chat.id` field is your group id. Supergroups
+   have a negative id (e.g. `-1001234567890`) — that is normal. You can remove
+   RawDataBot afterwards.
+
+4. Configure nanoFinBot:
+
+   ```bash
+   nfb setup
+   ```
+
+   It prompts for the token, then the group id. (For the Docker/proot images run
+   `… setup` as shown in those sections instead.)
+
+5. Start the bot (`nfb run`, or the Docker/proot equivalent). On start it posts
+   `nanoFinBot ready` plus a provider status line in the group.
+
+## Setup: provider and model
+
+Text entry works out of the box (rules-only parser, no key needed). Photo OCR and
+auto-categorization need an **OpenAI-compatible** provider. Configure it from the
+group with a button menu — no config file editing:
+
+1. In the group, send `/settings`.
+2. Tap **Set text provider**.
+3. Reply with three space-separated values:
+
+   ```
+   <base_url> <model> <api_key>
+   ```
+
+Examples:
+
+- Gemini (cheapest for OCR):
+
+  ```
+  https://generativelanguage.googleapis.com/v1beta/openai/ gemini-2.5-flash <gemini-key>
+  ```
+
+- OpenAI:
+
+  ```
+  https://api.openai.com/v1 gpt-4o-mini sk-...
+  ```
+
+- Any other OpenAI-compatible server (local Ollama/vLLM, Groq, etc.) — just paste
+  its base URL, model name, and key.
+
+Optionally set a separate **image provider** the same way (tap *Set image provider*);
+if you don't, photos use the text provider. Tap *Clear image provider* to revert to
+that fallback. API keys are masked in the menu. The bot's startup status line
+confirms whether the provider is ready.
+
 ## Run from the GHCR image
 
 The image stores config and the SQLite database in `/config` and `/data`.
