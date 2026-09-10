@@ -54,6 +54,10 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
     async def cmd_start(msg: Message) -> None:
         await msg.answer("Hi! Send a photo or text like `spend 50 pizza`.")
 
+    @dp.message(Command("chatid", "id"))
+    async def cmd_chatid(msg: Message) -> None:
+        await msg.answer(f"Chat id: {msg.chat.id}")
+
     @dp.message(Command("list"))
     async def cmd_list(msg: Message) -> None:
         await capture.on_list(bot, msg.chat.id)

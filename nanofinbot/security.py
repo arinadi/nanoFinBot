@@ -7,12 +7,22 @@ from aiogram.types import CallbackQuery, Message
 
 from nanofinbot.config import Config
 
+BOOTSTRAP_COMMANDS = ("/chatid", "/id")
+
 
 def authorized(cfg: Config, chat_id: int | None) -> bool:
     """True only when the message comes from the configured group chat."""
     if cfg.group_id is None or chat_id is None:
         return False
     return chat_id == cfg.group_id
+
+
+def is_bootstrap(text: str | None) -> bool:
+    """True for the id-revealing commands, which work before the group is set."""
+    if not text:
+        return False
+    stripped = text.strip()
+    return any(stripped.startswith(c) for c in BOOTSTRAP_COMMANDS)
 
 
 class AuthMiddleware(BaseMiddleware):
@@ -23,7 +33,7 @@ class AuthMiddleware(BaseMiddleware):
 
     async def __call__(self, handler, event, data):
         if isinstance(event, Message):
-            if not authorized(self.cfg, event.chat.id):
+            if not (is_bootstrap(event.text) or authorized(self.cfg, event.chat.id)):
                 return
         elif isinstance(event, CallbackQuery):
             if event.message is None or not authorized(self.cfg, event.message.chat.id):
