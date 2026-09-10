@@ -58,10 +58,25 @@ def _provider_from_dict(raw: dict | None) -> ProviderSettings:
     if not isinstance(raw, dict):
         return ProviderSettings()
     return ProviderSettings(
-        base_url=str(raw.get("base_url", "") or ""),
+        base_url=normalize_base_url(str(raw.get("base_url", "") or "")),
         model=str(raw.get("model", "") or ""),
         api_key=str(raw.get("api_key", "") or ""),
     )
+
+
+def normalize_base_url(url: str) -> str:
+    """Strip endpoint paths the OpenAI SDK appends itself.
+
+    base_url must be the API root: the SDK adds ``/chat/completions`` on every
+    call, so a trailing ``/chat/completions`` or ``/responses`` would 404.
+    Applied on load too, so configs saved before this guard heal on restart.
+    """
+    url = (url or "").strip().rstrip("/")
+    for suffix in ("/chat/completions", "/responses"):
+        if url.lower().endswith(suffix):
+            url = url[: -len(suffix)].rstrip("/")
+            break
+    return url
 
 
 def _from_dict(raw: dict) -> Config:

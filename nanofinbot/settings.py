@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from nanofinbot.config import Config, ProviderSettings
+from nanofinbot.config import Config, ProviderSettings, normalize_base_url
 
 
 def mask_key(key: str) -> str:
@@ -32,30 +32,16 @@ def settings_text(cfg: Config) -> str:
     return "\n".join(lines)
 
 
+def clear_image_provider(cfg: Config) -> None:
+    cfg.image_provider = None
+
+
 def set_text_provider(cfg: Config, base_url: str, model: str, api_key: str) -> None:
     cfg.provider = ProviderSettings(base_url=normalize_base_url(base_url), model=model, api_key=api_key)
 
 
 def set_image_provider(cfg: Config, base_url: str, model: str, api_key: str) -> None:
     cfg.image_provider = ProviderSettings(base_url=normalize_base_url(base_url), model=model, api_key=api_key)
-
-
-def normalize_base_url(url: str) -> str:
-    """Strip endpoint paths the OpenAI SDK appends itself.
-
-    base_url must be the API root: the SDK adds ``/chat/completions`` on every
-    call, so a trailing ``/chat/completions`` or ``/responses`` would 404.
-    """
-    url = (url or "").strip().rstrip("/")
-    for suffix in ("/chat/completions", "/responses"):
-        if url.lower().endswith(suffix):
-            url = url[: -len(suffix)].rstrip("/")
-            break
-    return url
-
-
-def clear_image_provider(cfg: Config) -> None:
-    cfg.image_provider = None
 
 
 def toggle_debug(cfg: Config) -> bool:

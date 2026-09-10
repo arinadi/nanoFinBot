@@ -55,3 +55,15 @@ def test_group_id_parsed_as_int(tmp_config_dir):
     path.write_text(json.dumps(raw))
     loaded = load_config(path)
     assert loaded.group_id == 123
+
+
+def test_base_url_normalized_on_load(tmp_config_dir):
+    path = tmp_config_dir / "config.json"
+    path.write_text(json.dumps({
+        "telegram_token": "t",
+        "provider": {"base_url": "https://x/v1/chat/completions", "model": "m", "api_key": "k"},
+        "image_provider": {"base_url": "https://y/v1/responses", "model": "im", "api_key": "k"},
+    }))
+    loaded = load_config(path)
+    assert loaded.provider.base_url == "https://x/v1"
+    assert loaded.image_provider.base_url == "https://y/v1"
