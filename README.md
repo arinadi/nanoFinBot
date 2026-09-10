@@ -61,16 +61,11 @@ that group's chat id.
 3. Create the group — in Telegram, "New Group", add your bot to it, and make the
    bot an **admin** (so it can read messages).
 
-4. Get the group chat id — send any message in the group, then from a terminal
-   (no browser needed):
-
-   ```bash
-   curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"
-   ```
-
-   Find the last message in the JSON and read its `chat.id`. Supergroups have a
-   negative id (e.g. `-1001234567890`) — that is normal. Alternative: once the bot
-   is running, just send `/chatid` in the group and it replies with the id.
+4. Get the group chat id — chat with [@ScanIDBot](https://t.me/ScanIDBot) and
+   follow its steps (no need to invite it to the group; you forward a group message
+   to it). Supergroups have a negative id (e.g. `-1001234567890`) — that is normal.
+   Alternative: once the bot is running, just send `/chatid` in the group and it
+   replies with the id.
 
 5. Configure nanoFinBot:
 
