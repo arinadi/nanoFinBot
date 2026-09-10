@@ -81,3 +81,20 @@ async def test_generic_error():
         provider = Provider(ProviderSettings(base_url=f"http://127.0.0.1:{port}/v1", model="m", api_key="k"))
         with pytest.raises(ProviderError):
             await provider.text("sys", "hi")
+
+
+async def test_html_error_truncated():
+    html = "<!DOCTYPE html><title>Not Found</title>" + "x" * 5000
+
+    async def handler(request):
+        return web.Response(status=404, text=html, content_type="text/html")
+
+    app = web.Application()
+    app.router.add_post("/v1/chat/completions", handler)
+
+    async with serve(app) as port:
+        provider = Provider(ProviderSettings(base_url=f"http://127.0.0.1:{port}/v1", model="m", api_key="k"))
+        with pytest.raises(ProviderError) as excinfo:
+            await provider.text("sys", "hi")
+    assert "404" in str(excinfo.value)
+    assert len(str(excinfo.value)) < 500

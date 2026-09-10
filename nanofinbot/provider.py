@@ -31,6 +31,21 @@ class ProviderNotConfigured(ProviderError):
     """No provider is configured."""
 
 
+def _format_api_error(exc: APIError) -> str:
+    status = getattr(exc, "status_code", None)
+    snippet = ""
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        err = body.get("error", {})
+        snippet = err.get("message", "") if isinstance(err, dict) else str(err)
+    if not snippet:
+        snippet = str(body if body else getattr(exc, "message", ""))
+    snippet = " ".join(snippet.split())[:300]
+    if status is not None:
+        return f"provider error (HTTP {status}): {snippet}"
+    return f"provider error: {snippet}"
+
+
 class _Client:
     def __init__(self, settings: ProviderSettings):
         self.base_url = settings.base_url
@@ -62,7 +77,7 @@ class _Client:
         except APIConnectionError as exc:
             raise ProviderNetworkError("provider unreachable") from exc
         except APIError as exc:
-            raise ProviderError(f"provider error: {exc}") from exc
+            raise ProviderError(_format_api_error(exc)) from exc
         content = resp.choices[0].message.content
         return content or ""
 

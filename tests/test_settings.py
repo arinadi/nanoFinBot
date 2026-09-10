@@ -26,6 +26,13 @@ def test_mask_key():
     assert settings.mask_key("sk-abc123") == "sk-a…"
 
 
+def test_normalize_base_url():
+    assert settings.normalize_base_url("https://x/v1/chat/completions") == "https://x/v1"
+    assert settings.normalize_base_url("https://x/v1/responses/") == "https://x/v1"
+    assert settings.normalize_base_url("https://x/v1/") == "https://x/v1"
+    assert settings.normalize_base_url("https://x/v1") == "https://x/v1"
+
+
 def test_provider_status_ready():
     cfg = Config(telegram_token="x")
     settings.set_text_provider(cfg, "http://x/v1", "m", "k")
