@@ -152,6 +152,18 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
             _flush_media(bot, cfg, provider, msg.chat.id, msg.from_user.id, group)
         )
 
+    @dp.message(F.document)
+    async def on_document_msg(msg: Message) -> None:
+        if msg.from_user is None or msg.document is None:
+            return
+        mime = msg.document.mime_type or ""
+        if not mime.startswith("image/"):
+            await msg.answer("Only image files are supported (photo or image document).")
+            return
+        data = await bot.download(msg.document)
+        image_bytes = data.read() if data is not None else b""
+        await capture.on_photo(bot, cfg, provider, msg.chat.id, msg.from_user.id, image_bytes)
+
     @dp.message(F.text)
     async def on_text_msg(msg: Message) -> None:
         if msg.from_user is None:

@@ -47,18 +47,24 @@ async def photo_to_draft(
     base = Draft(source="photo", currency=currency)
     if provider is None or not getattr(provider, "configured", False):
         base.reason = "no provider configured"
+        if debug_log is not None:
+            debug_log.append(("vision", "skipped: no provider configured"))
         return base
 
     try:
         processed = await asyncio.to_thread(preprocess, image_bytes)
-    except (ValueError, OSError):
+    except (ValueError, OSError) as exc:
         base.reason = "could not process image"
+        if debug_log is not None:
+            debug_log.append(("vision", f"ERROR: {exc}"))
         return base
 
     try:
         raw = await provider.vision(OCR_SYSTEM_PROMPT, processed, json_mode=True)
-    except ProviderError:
+    except ProviderError as exc:
         base.reason = "provider error"
+        if debug_log is not None:
+            debug_log.append(("vision", f"ERROR: {exc}"))
         return base
     if debug_log is not None:
         debug_log.append(("vision", raw))

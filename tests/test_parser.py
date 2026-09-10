@@ -106,3 +106,25 @@ async def test_llm_parse_bad_json():
     d = await llm_parse("lunch", "IDR", provider)
     assert d.amount_minor is None
     assert d.reason
+
+
+async def test_llm_parse_error_still_logged():
+    from nanofinbot.provider import ProviderError
+
+    class BoomProvider:
+        configured = True
+
+        async def text(self, system, user, json_mode=False):
+            raise ProviderError("boom")
+
+    log: list = []
+    d = await llm_parse("lunch", "IDR", BoomProvider(), log)
+    assert d.amount_minor is None
+    assert log and log[0][0] == "llm_parse" and "ERROR" in log[0][1]
+
+
+async def test_llm_parse_unconfigured_logged():
+    log: list = []
+    d = await llm_parse("lunch", "IDR", None, log)
+    assert d.amount_minor is None
+    assert log and "skipped" in log[0][1]

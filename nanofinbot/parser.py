@@ -177,7 +177,9 @@ async def categorize(
         return None
     try:
         raw = await provider.text(CATEGORY_SYSTEM_PROMPT, user, json_mode=True)
-    except ProviderError:
+    except ProviderError as exc:
+        if debug_log is not None:
+            debug_log.append(("categorize", f"ERROR: {exc}"))
         return None
     if debug_log is not None:
         debug_log.append(("categorize", raw))
@@ -211,12 +213,16 @@ async def llm_parse(
     base = Draft(source="text", currency=normalize_currency(default_currency, "IDR"))
     if provider is None or not getattr(provider, "configured", False):
         base.reason = "no provider configured"
+        if debug_log is not None:
+            debug_log.append(("llm_parse", "skipped: no provider configured"))
         return base
     user = f"Message: {text}\nDefault currency: {default_currency}"
     try:
         raw = await provider.text(LLM_PARSE_SYSTEM_PROMPT, user, json_mode=True)
-    except ProviderError:
+    except ProviderError as exc:
         base.reason = "provider error"
+        if debug_log is not None:
+            debug_log.append(("llm_parse", f"ERROR: {exc}"))
         return base
     if debug_log is not None:
         debug_log.append(("llm_parse", raw))
