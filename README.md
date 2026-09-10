@@ -54,15 +54,19 @@ that group's chat id.
    Follow the prompts (name + username). BotFather replies with the **token** —
    keep it secret.
 
-2. Create the group — in Telegram, "New Group", add your bot to it, and make the
+2. **Turn off group privacy** — bots by default only see commands, replies, and
+   @mentions. nanoFinBot needs to read every message and photo. In BotFather send
+   `/setprivacy`, pick your bot, and choose **Disable**.
+
+3. Create the group — in Telegram, "New Group", add your bot to it, and make the
    bot an **admin** (so it can read messages).
 
-3. Get the group chat id — add [@RawDataBot](https://t.me/RawDataBot) to the group;
+4. Get the group chat id — add [@RawDataBot](https://t.me/RawDataBot) to the group;
    it posts a JSON message, and the `chat.id` field is your group id. Supergroups
    have a negative id (e.g. `-1001234567890`) — that is normal. You can remove
    RawDataBot afterwards.
 
-4. Configure nanoFinBot:
+5. Configure nanoFinBot:
 
    ```bash
    nfb setup
@@ -71,7 +75,7 @@ that group's chat id.
    It prompts for the token, then the group id. (For the Docker/proot images run
    `… setup` as shown in those sections instead.)
 
-5. Start the bot (`nfb run`, or the Docker/proot equivalent). On start it posts
+6. Start the bot (`nfb run`, or the Docker/proot equivalent). On start it posts
    `nanoFinBot ready` plus a provider status line in the group.
 
 ## Setup: provider and model
