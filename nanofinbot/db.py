@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import calendar
+import math
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -89,8 +90,35 @@ def get_symbol(code: str) -> str:
     return CURRENCIES.get(code.upper(), ("", 0))[0]
 
 
+MAX_AMOUNT_MINOR = 10 ** 12
+
+
+def normalize_currency(code: str, default: str) -> str:
+    normalized = str(code).upper()
+    if normalized in CURRENCIES:
+        return normalized
+    default_norm = str(default).upper()
+    if default_norm in CURRENCIES:
+        return default_norm
+    return "IDR"
+
+
 def to_minor(amount: float, code: str) -> int:
-    return int(round(amount * (10 ** get_minor_exponent(code))))
+    if not math.isfinite(amount):
+        raise ValueError("amount must be finite")
+    minor = int(round(amount * (10 ** get_minor_exponent(code))))
+    if abs(minor) > MAX_AMOUNT_MINOR:
+        raise ValueError("amount too large")
+    return minor
+
+
+def valid_minor(amount: float, code: str) -> int | None:
+    """Return positive minor units, or None when invalid/zero/negative/too large."""
+    try:
+        minor = to_minor(amount, code)
+    except (ValueError, OverflowError):
+        return None
+    return minor if minor > 0 else None
 
 
 def format_amount(minor: int, code: str) -> str:
@@ -198,17 +226,6 @@ async def set_status(tx_id: int, status: str) -> bool:
         return cur.rowcount > 0
 
 
-async def set_category(tx_id: int, category_id: int) -> bool:
-    """Attach a category to a draft (only valid while still a draft)."""
-    async with _lock:
-        cur = await _conn().execute(
-            "UPDATE transactions SET category_id=? WHERE id=? AND status='draft'",
-            (category_id, tx_id),
-        )
-        await _conn().commit()
-        return cur.rowcount > 0
-
-
 async def delete_draft(tx_id: int) -> bool:
     async with _lock:
         cur = await _conn().execute(
@@ -256,14 +273,6 @@ async def list_transactions(
 
 def _normalize_category(name: str) -> str:
     return " ".join(name.strip().split()).title() or "Uncategorized"
-
-
-async def create_category(name: str) -> int:
-    normalized = _normalize_category(name)
-    async with _lock:
-        cur = await _conn().execute("INSERT INTO categories (name, created_at) VALUES (?,?)", (normalized, _now_iso()))
-        await _conn().commit()
-        return cur.lastrowid
 
 
 async def list_categories() -> list[dict]:
@@ -347,6 +356,11 @@ def _add_month(d: date) -> date:
     return date(year, month, day)
 
 
+def _add_year(d: date) -> date:
+    day = min(d.day, calendar.monthrange(d.year + 1, d.month)[1])
+    return date(d.year + 1, d.month, day)
+
+
 def advance_due(next_due: str, frequency: str) -> str:
     d = date.fromisoformat(next_due)
     if frequency == "daily":
@@ -356,7 +370,7 @@ def advance_due(next_due: str, frequency: str) -> str:
     elif frequency == "monthly":
         d = _add_month(d)
     elif frequency == "yearly":
-        d = date(d.year + 1, d.month, d.day)
+        d = _add_year(d)
     return d.isoformat()
 
 

@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 
 from nanofinbot.config import DEFAULT_CURRENCY
-from nanofinbot.db import CURRENCIES, get_symbol, to_minor
+from nanofinbot.db import CURRENCIES, get_symbol, normalize_currency, valid_minor
 from nanofinbot.provider import Provider, ProviderError
 
 _SYMBOL_TO_CODE = {
@@ -100,7 +100,7 @@ def parse(text: str, default_currency: str = DEFAULT_CURRENCY) -> Draft:
     if not s:
         return Draft(currency=default_currency, reason="empty input")
 
-    code = _detect_currency(s, default_currency)
+    code = normalize_currency(_detect_currency(s, default_currency), default_currency)
     is_income = _is_income(s)
     amount = _extract_amount(s)
     desc = _extract_description(s, code)
@@ -114,7 +114,11 @@ def parse(text: str, default_currency: str = DEFAULT_CURRENCY) -> Draft:
     if amount is None:
         draft.reason = "no amount found"
         return draft
-    draft.amount_minor = to_minor(amount, code)
+    minor = valid_minor(amount, code)
+    if minor is None:
+        draft.reason = "amount must be a positive number"
+        return draft
+    draft.amount_minor = minor
     return draft
 
 

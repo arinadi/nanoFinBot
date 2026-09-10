@@ -48,3 +48,30 @@ async def test_amount_formatting():
     assert db.to_minor(50000, "IDR") == 50000
     assert db.format_amount(12500, "IDR") == "Rp 12,500"
     assert db.format_amount(5000, "USD") == "$ 50.00"
+
+
+def test_advance_due_daily_weekly():
+    assert db.advance_due("2026-01-31", "daily") == "2026-02-01"
+    assert db.advance_due("2026-01-31", "weekly") == "2026-02-07"
+
+
+def test_advance_due_monthly_clamp():
+    assert db.advance_due("2026-01-31", "monthly") == "2026-02-28"
+
+
+def test_advance_due_yearly_leap_day():
+    assert db.advance_due("2028-02-29", "yearly") == "2029-02-28"
+
+
+def test_valid_minor():
+    assert db.valid_minor(50, "USD") == 5000
+    assert db.valid_minor(0, "USD") is None
+    assert db.valid_minor(-5, "USD") is None
+    assert db.valid_minor(float("inf"), "USD") is None
+    assert db.valid_minor(1e20, "USD") is None
+
+
+def test_normalize_currency():
+    assert db.normalize_currency("usd", "IDR") == "USD"
+    assert db.normalize_currency("XYZ", "IDR") == "IDR"
+    assert db.normalize_currency("XYZ", "ZZZ") == "IDR"

@@ -20,6 +20,12 @@ def test_set_provider(tmp_config_dir):
     assert "sk-abc" not in settings.settings_text(loaded)  # masked
 
 
+def test_mask_key():
+    assert settings.mask_key("") == "(none)"
+    assert settings.mask_key("abcd") == "****"
+    assert settings.mask_key("sk-abc123") == "sk-a…"
+
+
 async def test_clear_image_provider(tmp_config_dir):
     cfg = Config(telegram_token="x")
     settings.set_text_provider(cfg, "http://x/v1", "m", "k")

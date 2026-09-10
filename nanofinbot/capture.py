@@ -127,14 +127,15 @@ async def on_save(bot, chat_id: int, draft_id: int) -> None:
     row = await db.get_transaction(draft_id)
     if row is None or row["status"] != "draft":
         return
-    if row["amount_minor"] is None:
-        await bot.send_message(chat_id, "Please set an amount first (use Edit).")
+    if row["amount_minor"] is None or row["amount_minor"] <= 0:
+        await bot.send_message(chat_id, "Please set a positive amount first (use Edit).")
         return
     if await db.set_status(draft_id, "active"):
         await bot.send_message(
             chat_id,
             f"Saved: {db.format_amount(row['amount_minor'], row['currency'])} {row['description']}".strip(),
         )
+    _clear_editing(row["created_by"], draft_id)
     await _present_next(bot, chat_id, row["created_by"])
 
 
@@ -181,7 +182,25 @@ async def on_cancel(bot, chat_id: int, draft_id: int) -> None:
         return
     if await db.delete_draft(draft_id):
         await bot.send_message(chat_id, "Draft discarded.")
+        _clear_editing(row["created_by"], draft_id)
         await _present_next(bot, chat_id, row["created_by"])
+
+
+def _clear_editing(user_id: int | None, draft_id: int) -> None:
+    if user_id is not None and _editing.get(user_id) == draft_id:
+        _editing.pop(user_id, None)
+
+
+async def resume_pending(bot, chat_id: int) -> None:
+    """Re-present the oldest pending draft on restart (architecture risk 4)."""
+    drafts = await db.list_transactions(status="draft")
+    if not drafts:
+        return
+    drafts.sort(key=lambda r: r["id"])
+    first, rest = drafts[0], drafts[1:]
+    if first["created_by"] is not None:
+        _queue.setdefault(first["created_by"], []).extend(r["id"] for r in rest)
+    await _present_draft(bot, chat_id, first["id"])
 
 
 async def on_disable(bot, chat_id: int, tx_id: int) -> None:

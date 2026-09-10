@@ -31,6 +31,17 @@ def test_unparseable():
     assert d.reason
 
 
+def test_zero_amount_rejected():
+    d = parse("spend 0 pizza", "USD")
+    assert d.amount_minor is None
+
+
+def test_currency_code_override():
+    d = parse("spend 50 USD pizza", "IDR")
+    assert d.currency == "USD"
+    assert d.amount_minor == 5000
+
+
 def test_currency_symbol():
     d = parse("Rp 12500", "USD")
     assert d.currency == "IDR"

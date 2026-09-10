@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -111,6 +112,20 @@ def load_config(path: Path | None = None) -> Config:
 def save_config(cfg: Config, path: Path | None = None) -> None:
     p = path or config_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(p.name + ".tmp")
-    tmp.write_text(json.dumps(_to_dict(cfg), indent=2), encoding="utf-8")
-    os.replace(tmp, p)
+    try:
+        os.chmod(p.parent, 0o700)
+    except OSError:
+        pass
+    payload = json.dumps(_to_dict(cfg), indent=2)
+    fd, tmp_name = tempfile.mkstemp(dir=str(p.parent), prefix=".config-", suffix=".tmp")
+    try:
+        os.chmod(tmp_name, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(payload)
+        os.replace(tmp_name, p)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise

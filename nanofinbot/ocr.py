@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from io import BytesIO
 
 from PIL import Image
 
 from nanofinbot.config import DEFAULT_CURRENCY
-from nanofinbot.db import to_minor
+from nanofinbot.db import normalize_currency, valid_minor
 from nanofinbot.parser import Draft
 from nanofinbot.provider import Provider, ProviderError
+
+MAX_IMAGE_BYTES = 20 * 1024 * 1024
+MAX_IMAGE_PIXELS = 40_000_000
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 OCR_SYSTEM_PROMPT = (
     "You are a receipt reader. Extract the transaction from the image and respond "
@@ -23,6 +28,8 @@ OCR_SYSTEM_PROMPT = (
 
 def preprocess(image_bytes: bytes, max_dim: int = 768) -> bytes:
     """Downscale to a 768px grid and re-encode as JPEG (never touches disk)."""
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        raise ValueError("image too large")
     img = Image.open(BytesIO(image_bytes)).convert("RGB")
     img.thumbnail((max_dim, max_dim))
     buf = BytesIO()
@@ -35,12 +42,18 @@ async def photo_to_draft(
     default_currency: str = DEFAULT_CURRENCY,
     provider: Provider | None = None,
 ) -> Draft:
-    base = Draft(source="photo", currency=default_currency)
+    currency = normalize_currency(default_currency, "IDR")
+    base = Draft(source="photo", currency=currency)
     if provider is None or not getattr(provider, "configured", False):
         base.reason = "no provider configured"
         return base
 
-    processed = preprocess(image_bytes)
+    try:
+        processed = await asyncio.to_thread(preprocess, image_bytes)
+    except (ValueError, OSError):
+        base.reason = "could not process image"
+        return base
+
     try:
         raw = await provider.vision(OCR_SYSTEM_PROMPT, processed, json_mode=True)
     except ProviderError:
@@ -53,9 +66,10 @@ async def photo_to_draft(
         base.reason = "invalid json from provider"
         return base
 
-    currency = data.get("currency") or default_currency
-    if not isinstance(currency, str):
-        currency = default_currency
+    raw_currency = data.get("currency")
+    if not isinstance(raw_currency, str):
+        raw_currency = default_currency
+    currency = normalize_currency(raw_currency, default_currency)
 
     amount_minor = None
     try:
@@ -63,7 +77,7 @@ async def photo_to_draft(
     except (TypeError, ValueError):
         amount_float = None
     if amount_float is not None:
-        amount_minor = to_minor(amount_float, currency)
+        amount_minor = valid_minor(amount_float, currency)
 
     dtype = data.get("type")
     if dtype not in ("income", "expense"):

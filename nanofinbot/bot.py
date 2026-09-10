@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+from datetime import date, datetime, timezone
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
@@ -12,11 +15,16 @@ from aiogram.types import (
     Message,
 )
 
-from nanofinbot import __version__, capture, db, recurring, reports, settings
+from nanofinbot import __version__, capture, categories, db, recurring, reports, settings
 from nanofinbot.config import Config, save_config
 from nanofinbot.provider import Provider
+from nanofinbot.security import AuthMiddleware
 
 _settings_state: dict[int, str] = {}
+_media_pending: dict[str, list[bytes]] = {}
+_media_tasks: dict[str, asyncio.Task] = {}
+
+RECURRING_FREQUENCIES = ("daily", "weekly", "monthly", "yearly")
 
 
 async def startup(bot: Bot, cfg: Config) -> None:
@@ -26,8 +34,19 @@ async def startup(bot: Bot, cfg: Config) -> None:
     await bot.send_message(cfg.group_id, f"nanoFinBot {__version__} online")
 
 
+def _current_month_range() -> tuple[str, str]:
+    now = datetime.now(timezone.utc)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if now.month == 12:
+        nxt = now.replace(year=now.year + 1, month=1, day=1)
+    else:
+        nxt = now.replace(month=now.month + 1, day=1)
+    return start.isoformat(), nxt.isoformat()
+
+
 def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
     dp = Dispatcher()
+    dp.update.outer_middleware(AuthMiddleware(cfg))
     provider = Provider.from_config(cfg)
 
     @dp.message(CommandStart())
@@ -40,55 +59,31 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
 
     @dp.message(Command("report"))
     async def cmd_report(msg: Message) -> None:
-        rows = await db.list_transactions(status="active")
-        pdf = reports.build_pdf(rows)
+        start, end = _current_month_range()
+        rows = await db.list_transactions(status="active", start=start, end=end)
+        pdf = await asyncio.to_thread(reports.build_pdf, rows)
         await msg.answer_document(BufferedInputFile(pdf, filename="report.pdf"))
 
     @dp.message(Command("export"))
     async def cmd_export(msg: Message) -> None:
-        rows = await db.list_transactions(status="active")
-        csv_bytes = reports.build_csv(rows)
+        start, end = _current_month_range()
+        rows = await db.list_transactions(status="active", start=start, end=end)
+        csv_bytes = await asyncio.to_thread(reports.build_csv, rows)
         await msg.answer_document(BufferedInputFile(csv_bytes, filename="export.csv"))
 
     @dp.message(Command("categories"))
     async def cmd_categories(msg: Message) -> None:
-        cats = await db.list_categories()
-        if not cats:
-            await msg.answer("No categories yet.")
-            return
-        await msg.answer("\n".join(f"- {c['id']}: {c['name']}" for c in cats))
+        await categories.on_categories(bot, msg.chat.id)
 
     @dp.message(Command("rename"))
     async def cmd_rename(msg: Message) -> None:
-        parts = msg.text.split(maxsplit=2)
-        if len(parts) < 3:
-            await msg.answer("Usage: /rename <id> <new name>")
-            return
-        try:
-            category_id = int(parts[1])
-        except ValueError:
-            await msg.answer("Category id must be a number.")
-            return
-        ok = await db.rename_category(category_id, parts[2])
-        await msg.answer("Renamed." if ok else "Rename failed (duplicate or empty name).")
+        await categories.on_rename(bot, msg.chat.id, msg.text)
 
     @dp.message(Command("recurring"))
     async def cmd_recurring(msg: Message) -> None:
         args = msg.text.split()[1:]
-        if args and args[0] == "add" and len(args) >= 6:
-            description = args[1]
-            amount = float(args[2])
-            currency = args[3].upper()
-            frequency = args[4]
-            next_due = args[5]
-            await recurring.add_item(
-                description=description,
-                amount_minor=db.to_minor(amount, currency),
-                currency=currency,
-                frequency=frequency,
-                next_due=next_due,
-            )
-            await msg.answer("Recurring item added.")
+        if args and args[0] == "add":
+            await _recurring_add(msg, cfg, args[1:])
             return
         await recurring.list_items(bot, msg.chat.id)
 
@@ -105,13 +100,27 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
 
     @dp.message(F.photo)
     async def on_photo_msg(msg: Message) -> None:
+        if msg.from_user is None:
+            return
         photo = msg.photo[-1]
         data = await bot.download(photo)
         image_bytes = data.read() if data is not None else b""
-        await capture.on_photo(bot, cfg, provider, msg.chat.id, msg.from_user.id, image_bytes)
+        group = msg.media_group_id
+        if group is None:
+            await capture.on_photo(bot, cfg, provider, msg.chat.id, msg.from_user.id, image_bytes)
+            return
+        _media_pending.setdefault(group, []).append(image_bytes)
+        task = _media_tasks.get(group)
+        if task is not None:
+            task.cancel()
+        _media_tasks[group] = asyncio.create_task(
+            _flush_media(bot, cfg, provider, msg.chat.id, msg.from_user.id, group)
+        )
 
     @dp.message(F.text)
     async def on_text_msg(msg: Message) -> None:
+        if msg.from_user is None:
+            return
         user_id = msg.from_user.id
         if user_id in _settings_state:
             target = _settings_state.pop(user_id)
@@ -132,6 +141,9 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
 
     @dp.callback_query()
     async def on_callback(cq: CallbackQuery) -> None:
+        if cq.message is None or cq.from_user is None:
+            await cq.answer()
+            return
         await cq.answer()
         data = cq.data
         chat_id = cq.message.chat.id
@@ -156,13 +168,74 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
     return dp
 
 
+async def _flush_media(bot: Bot, cfg: Config, provider, chat_id: int, user_id: int, group: str) -> None:
+    await asyncio.sleep(1.0)
+    images = _media_pending.pop(group, [])
+    _media_tasks.pop(group, None)
+    if images:
+        await capture.on_photos(bot, cfg, provider, chat_id, user_id, images)
+
+
+async def _recurring_add(msg: Message, cfg: Config, rest: list[str]) -> None:
+    if len(rest) < 5:
+        await msg.answer("Usage: /recurring add <description> <amount> <currency> <frequency> <next_due> [expense|income]")
+        return
+    description = rest[0]
+    try:
+        amount = float(rest[1])
+    except ValueError:
+        await msg.answer("Amount must be a number.")
+        return
+    currency = db.normalize_currency(rest[2], cfg.default_currency)
+    frequency = rest[3].lower()
+    next_due = rest[4]
+    type_ = rest[5].lower() if len(rest) > 5 else "expense"
+
+    if frequency not in RECURRING_FREQUENCIES:
+        await msg.answer("Frequency must be daily/weekly/monthly/yearly.")
+        return
+    try:
+        date.fromisoformat(next_due)
+    except ValueError:
+        await msg.answer("next_due must be YYYY-MM-DD.")
+        return
+    if type_ not in ("expense", "income"):
+        type_ = "expense"
+    minor = db.valid_minor(amount, currency)
+    if minor is None:
+        await msg.answer("Amount must be a positive number.")
+        return
+
+    await recurring.add_item(
+        description=description,
+        amount_minor=minor,
+        currency=currency,
+        type=type_,
+        frequency=frequency,
+        next_due=next_due,
+    )
+    await msg.answer("Recurring item added.")
+
+
+async def _recurring_loop(bot: Bot, cfg: Config) -> None:
+    while True:
+        await asyncio.sleep(3600)
+        await recurring.check_due(bot, cfg)
+
+
 async def main(cfg: Config) -> None:
     bot = Bot(token=cfg.telegram_token)
     await db.init_db()
+    task = None
     try:
         await startup(bot, cfg)
         await recurring.check_due(bot, cfg)
+        if cfg.group_id is not None:
+            await capture.resume_pending(bot, cfg.group_id)
         dp = build_dispatcher(bot, cfg)
+        task = asyncio.create_task(_recurring_loop(bot, cfg))
         await dp.start_polling(bot)
     finally:
+        if task is not None:
+            task.cancel()
         await db.close_db()

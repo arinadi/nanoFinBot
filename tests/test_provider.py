@@ -6,7 +6,7 @@ import pytest
 from aiohttp import web
 
 from nanofinbot.config import ProviderSettings
-from nanofinbot.provider import Provider, ProviderAuthError
+from nanofinbot.provider import Provider, ProviderAuthError, ProviderError, ProviderNotConfigured
 
 
 @asynccontextmanager
@@ -61,4 +61,23 @@ async def test_auth_error():
     async with serve(app) as port:
         provider = Provider(ProviderSettings(base_url=f"http://127.0.0.1:{port}/v1", model="m", api_key="bad"))
         with pytest.raises(ProviderAuthError):
+            await provider.text("sys", "hi")
+
+
+async def test_not_configured():
+    provider = Provider(ProviderSettings(base_url="", model="", api_key=""))
+    with pytest.raises(ProviderNotConfigured):
+        await provider.text("sys", "hi")
+
+
+async def test_generic_error():
+    async def handler(request):
+        return web.Response(status=500, text="boom")
+
+    app = web.Application()
+    app.router.add_post("/v1/chat/completions", handler)
+
+    async with serve(app) as port:
+        provider = Provider(ProviderSettings(base_url=f"http://127.0.0.1:{port}/v1", model="m", api_key="k"))
+        with pytest.raises(ProviderError):
             await provider.text("sys", "hi")

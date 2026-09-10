@@ -9,6 +9,7 @@ editable mode (so `git pull` updates are picked up automatically), and puts an
 from __future__ import annotations
 
 import os
+import shlex
 import stat
 import subprocess
 import sys
@@ -55,17 +56,43 @@ def run(cmd: list[str]) -> None:
 def write_launcher(venv: Path) -> Path:
     bin_dir = user_bin_dir()
     bin_dir.mkdir(parents=True, exist_ok=True)
+    target = venv_script(venv, "nfb")
 
     if sys.platform == "win32":
         launcher = bin_dir / "nfb.cmd"
-        content = f'@echo off\r\n"{venv_script(venv, "nfb")}" %*\r\n'
+        escaped = str(target).replace("%", "%%")
+        content = f'@echo off\r\n"{escaped}" %*\r\n'
         launcher.write_text(content, encoding="utf-8")
     else:
         launcher = bin_dir / "nfb"
-        content = f'#!/bin/sh\nexec "{venv_script(venv, "nfb")}" "$@"\n'
+        content = f'#!/bin/sh\nexec {shlex.quote(str(target))} "$@"\n'
         launcher.write_text(content, encoding="utf-8")
         launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return launcher
+
+
+def ensure_on_path(bin_dir: Path) -> None:
+    """Add the user bin dir to PATH persistently (POSIX). No-op on Windows."""
+    if sys.platform == "win32":
+        return
+    path_entries = os.environ.get("PATH", "").split(os.pathsep)
+    if str(bin_dir) in path_entries:
+        return
+    profile = Path.home() / ".profile"
+    line = f'export PATH="{bin_dir}:$PATH"'
+    try:
+        existing = profile.read_text(encoding="utf-8") if profile.exists() else ""
+    except OSError:
+        return
+    if line in existing:
+        return
+    try:
+        with open(profile, "a", encoding="utf-8") as f:
+            if existing and not existing.endswith("\n"):
+                f.write("\n")
+            f.write(line + "\n")
+    except OSError:
+        pass
 
 
 def main() -> int:
@@ -81,13 +108,21 @@ def main() -> int:
     run([str(python), "-m", "pip", "install", "-e", str(repo)])
 
     launcher = write_launcher(venv)
+    bin_dir = user_bin_dir()
+    ensure_on_path(bin_dir)
 
     print()
     print("nanoFinBot installed.")
     print(f"  venv:     {venv}")
     print(f"  launcher: {launcher}")
     print()
-    print("Make sure the bin directory is on your PATH, then run:")
+    if sys.platform == "win32":
+        print(f"Add this directory to PATH, then open a new terminal:")
+        print(f"  setx PATH \"%PATH%;{bin_dir}\"")
+    elif str(bin_dir) not in os.environ.get("PATH", "").split(os.pathsep):
+        print(f"Added {bin_dir} to ~/.profile. Open a new shell, or run:")
+        print(f"  export PATH=\"{bin_dir}:$PATH\"")
+    print()
     print("  nfb setup    # configure bot token and group")
     print("  nfb run      # start the bot")
     return 0

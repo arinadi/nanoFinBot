@@ -50,11 +50,11 @@ async def check_due(bot, cfg: Config, today: str | None = None) -> int:
     due = await db.due_recurring(today)
     sent = 0
     for item in due:
+        await db.set_next_due(item["id"], db.advance_due(item["next_due"], item["frequency"]))
         await bot.send_message(
             cfg.group_id,
             f"Reminder: {item['description']} "
             f"({db.format_amount(item['amount_minor'], item['currency'])}) is due.",
         )
-        await db.set_next_due(item["id"], db.advance_due(item["next_due"], item["frequency"]))
         sent += 1
     return sent

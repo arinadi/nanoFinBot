@@ -10,7 +10,7 @@ def mask_key(key: str) -> str:
         return "(none)"
     if len(key) <= 4:
         return "****"
-    return f"{key[:3]}...{key[-3:]}"
+    return f"{key[:4]}…"
 
 
 def format_provider(p: ProviderSettings) -> str:
