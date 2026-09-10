@@ -4,6 +4,32 @@ On-demand Telegram finance bot. Snap a photo of a receipt or type a line of text
 confirm the draft, and nanoFinBot stores an immutable transaction row in SQLite.
 No image or document is ever kept — only the extracted data.
 
+## Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant G as Telegram Group
+    participant B as NanoFinBot
+
+    Note over B: nfb run (server up)
+    B->>G: "nanoFinBot ready"
+
+    U->>G: send text (e.g. "spend 50 pizza") or a receipt photo
+    G->>B: forward message
+    B->>B: parse text / OCR photo → draft
+    B->>G: draft summary + [Save] [Edit] [Cancel]
+
+    U->>G: tap Save
+    G->>B: callback save:<id>
+    B->>B: write immutable transaction (SQLite)
+    B->>G: "Saved: …"
+
+    U->>G: /report or /export
+    G->>B: command
+    B->>G: PDF / CSV document
+```
+
 ## Install
 
 ```bash
