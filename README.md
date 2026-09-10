@@ -60,34 +60,36 @@ docker run --rm -it -v nanofinbot-config:/config ghcr.io/arinadi/nanofinbot:late
 
 ## Run in proot-distro (Termux on Android)
 
-No Docker and no root — run a full Linux userland on a phone and run nanoFinBot
-inside it. Long polling means no public webhook URL is needed, so it works from
-any network.
+proot-distro can pull the GHCR image directly — no Ubuntu install, no Docker, no
+root. Config and the SQLite DB live inside the container's persistent filesystem
+(`/config` and `/data`), so they survive restarts.
 
-1. Install **Termux from F-Droid** (not the deprecated Google Play build).
-2. Install proot-distro and Ubuntu:
+1. Install **Termux from F-Droid**, then install proot-distro:
 
    ```bash
    pkg install proot-distro
-   proot-distro install ubuntu
-   proot-distro login ubuntu
    ```
 
-3. Inside Ubuntu, install Python and git:
+2. Install nanoFinBot straight from GHCR:
 
    ```bash
-   apt update && apt install -y python3 git
+   proot-distro install ghcr.io/arinadi/nanofinbot:latest --name nfb
    ```
 
-4. Clone and install nanoFinBot:
+3. Configure the token and group id (runs the image's `nfb setup`):
 
    ```bash
-   git clone https://github.com/arinadi/nanoFinBot
-   cd nanoFinBot
-   python3 install.py
-   nfb setup
-   nfb run
+   proot-distro run -u nanofinbot nfb -- setup
    ```
+
+4. Start the bot:
+
+   ```bash
+   proot-distro run -u nanofinbot nfb -- run
+   ```
+
+The image runs as the non-root `nanofinbot` user; pass `-u nanofinbot` to match.
+Long polling means no webhook URL is needed, so it works from any network.
 
 ## Documentation
 
