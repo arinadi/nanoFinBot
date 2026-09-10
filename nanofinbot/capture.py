@@ -12,7 +12,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from nanofinbot import db
 from nanofinbot.config import Config
 from nanofinbot.ocr import photo_to_draft
-from nanofinbot.parser import Draft, categorize, parse
+from nanofinbot.parser import Draft, categorize, llm_parse, parse
 from nanofinbot.provider import Provider
 
 _editing: dict[int, int] = {}
@@ -87,13 +87,22 @@ async def _present_next(bot, chat_id: int, user_id: int) -> None:
         await bot.send_message(chat_id, "All queued items processed.")
 
 
+async def _parse_text(cfg: Config, provider, text: str) -> Draft:
+    """LLM-first text parsing with rules fallback (offline-safe)."""
+    if provider is not None and getattr(provider, "configured", False):
+        draft = await llm_parse(text, cfg.default_currency, provider)
+        if draft.amount_minor is not None:
+            return draft
+    return parse(text, cfg.default_currency)
+
+
 async def on_text(bot, cfg: Config, provider, chat_id: int, user_id: int, text: str) -> None:
     if user_id in _editing:
         draft_id = _editing.pop(user_id)
         await _apply_edit(bot, cfg, provider, chat_id, user_id, draft_id, text)
         return
 
-    draft = parse(text, cfg.default_currency)
+    draft = await _parse_text(cfg, provider, text)
     if draft.amount_minor is None:
         await bot.send_message(
             chat_id,
@@ -157,7 +166,7 @@ async def _apply_edit(bot, cfg: Config, provider, chat_id: int, user_id: int, dr
         await bot.send_message(chat_id, "This item can no longer be edited.")
         return
 
-    draft = parse(text, cfg.default_currency)
+    draft = await _parse_text(cfg, provider, text)
     if draft.amount_minor is None:
         _editing[user_id] = draft_id
         await bot.send_message(chat_id, "I couldn't parse that edit. Try again.")

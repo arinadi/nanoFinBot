@@ -45,6 +45,42 @@ class Draft:
     reason: str | None = None
 
 
+def draft_from_json(data: dict, default_currency: str, source: str) -> Draft:
+    """Build a Draft from an LLM/OCR JSON object (validated, positive-only)."""
+    raw_currency = data.get("currency")
+    if not isinstance(raw_currency, str):
+        raw_currency = default_currency
+    currency = normalize_currency(raw_currency, default_currency)
+
+    amount_minor = None
+    try:
+        amount_float = float(data.get("amount"))
+    except (TypeError, ValueError):
+        amount_float = None
+    if amount_float is not None:
+        amount_minor = valid_minor(amount_float, currency)
+
+    dtype = data.get("type")
+    if dtype not in ("income", "expense"):
+        dtype = "expense"
+
+    description = data.get("description")
+    if not isinstance(description, str):
+        description = ""
+    category = data.get("category")
+    if not isinstance(category, str):
+        category = None
+
+    return Draft(
+        amount_minor=amount_minor,
+        currency=currency,
+        type=dtype,
+        description=description.strip(),
+        category=category,
+        source=source,
+    )
+
+
 def _detect_currency(text: str, default: str) -> str:
     upper = text.upper()
     for code in CURRENCIES:
@@ -147,3 +183,37 @@ async def categorize(draft: Draft, provider: Provider | None = None) -> str | No
     if isinstance(category, str) and category.strip():
         return category.strip()
     return None
+
+
+LLM_PARSE_SYSTEM_PROMPT = (
+    "You are a personal finance parser. Given a short natural-language money "
+    "message, extract the transaction and respond with valid JSON only, in the form "
+    '{"amount": 12.34, "currency": "IDR", "type": "expense", '
+    '"description": "...", "category": "..."}. '
+    '"type" is either "expense" or "income". "currency" is a 3-letter ISO code '
+    '(use the given default when the message does not mention one). "amount" is a '
+    "positive number. If a field cannot be determined, use null."
+)
+
+
+async def llm_parse(
+    text: str,
+    default_currency: str = DEFAULT_CURRENCY,
+    provider: Provider | None = None,
+) -> Draft:
+    base = Draft(source="text", currency=normalize_currency(default_currency, "IDR"))
+    if provider is None or not getattr(provider, "configured", False):
+        base.reason = "no provider configured"
+        return base
+    user = f"Message: {text}\nDefault currency: {default_currency}"
+    try:
+        raw = await provider.text(LLM_PARSE_SYSTEM_PROMPT, user, json_mode=True)
+    except ProviderError:
+        base.reason = "provider error"
+        return base
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        base.reason = "invalid json from provider"
+        return base
+    return draft_from_json(data, default_currency, "text")

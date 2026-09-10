@@ -1,6 +1,6 @@
 """Tests for the rules-based parser and LLM categorization."""
 
-from nanofinbot.parser import Draft, categorize, parse
+from nanofinbot.parser import Draft, categorize, llm_parse, parse
 
 
 def test_spend():
@@ -79,3 +79,30 @@ async def test_categorize_bad_json():
     d = Draft(description="pizza")
     provider = FakeProvider("not json at all")
     assert await categorize(d, provider) is None
+
+
+async def test_llm_parse():
+    provider = FakeProvider(
+        '{"amount": 25, "currency": "USD", "type": "expense", '
+        '"description": "Lunch", "category": "Food"}'
+    )
+    d = await llm_parse("lunch at cafe", "IDR", provider)
+    assert d.amount_minor == 2500
+    assert d.currency == "USD"
+    assert d.type == "expense"
+    assert d.description == "Lunch"
+    assert d.category == "Food"
+    assert d.source == "text"
+
+
+async def test_llm_parse_no_provider():
+    d = await llm_parse("lunch", "IDR", None)
+    assert d.amount_minor is None
+    assert d.reason
+
+
+async def test_llm_parse_bad_json():
+    provider = FakeProvider("nope, not json")
+    d = await llm_parse("lunch", "IDR", provider)
+    assert d.amount_minor is None
+    assert d.reason

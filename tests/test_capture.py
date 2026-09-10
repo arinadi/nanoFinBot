@@ -21,6 +21,36 @@ async def test_draft_shown(fresh_db, fake_bot):
     assert len(await db.list_transactions(status="draft")) == 1
 
 
+class ParseProvider:
+    configured = True
+
+    def __init__(self, content):
+        self.content = content
+
+    async def text(self, system, user, json_mode=False):
+        return self.content
+
+
+async def test_text_uses_llm(fresh_db, fake_bot):
+    provider = ParseProvider(
+        '{"amount": 30, "currency": "USD", "type": "expense", '
+        '"description": "Lunch", "category": "Food"}'
+    )
+    await capture.on_text(fake_bot, cfg(), provider, 1, 1, "lunch at cafe")
+    row = (await db.list_transactions(status="draft"))[0]
+    assert row["amount_minor"] == 3000
+    assert row["description"] == "Lunch"
+    assert row["category_name"] == "Food"
+
+
+async def test_text_falls_back_to_rules(fresh_db, fake_bot):
+    provider = ParseProvider("this is not json")
+    await capture.on_text(fake_bot, cfg(), provider, 1, 1, "spend 50 pizza")
+    row = (await db.list_transactions(status="draft"))[0]
+    assert row["amount_minor"] == 5000
+    assert row["description"] == "pizza"
+
+
 async def test_save(fresh_db, fake_bot):
     await capture.on_text(fake_bot, cfg(), None, 1, 1, "spend 50 pizza")
     draft_id = await _draft_id()

@@ -9,8 +9,8 @@ from io import BytesIO
 from PIL import Image
 
 from nanofinbot.config import DEFAULT_CURRENCY
-from nanofinbot.db import normalize_currency, valid_minor
-from nanofinbot.parser import Draft
+from nanofinbot.db import normalize_currency
+from nanofinbot.parser import Draft, draft_from_json
 from nanofinbot.provider import Provider, ProviderError
 
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
@@ -66,35 +66,4 @@ async def photo_to_draft(
         base.reason = "invalid json from provider"
         return base
 
-    raw_currency = data.get("currency")
-    if not isinstance(raw_currency, str):
-        raw_currency = default_currency
-    currency = normalize_currency(raw_currency, default_currency)
-
-    amount_minor = None
-    try:
-        amount_float = float(data.get("amount"))
-    except (TypeError, ValueError):
-        amount_float = None
-    if amount_float is not None:
-        amount_minor = valid_minor(amount_float, currency)
-
-    dtype = data.get("type")
-    if dtype not in ("income", "expense"):
-        dtype = "expense"
-
-    description = data.get("description")
-    if not isinstance(description, str):
-        description = ""
-    category = data.get("category")
-    if not isinstance(category, str):
-        category = None
-
-    return Draft(
-        amount_minor=amount_minor,
-        currency=currency,
-        type=dtype,
-        description=description.strip(),
-        category=category,
-        source="photo",
-    )
+    return draft_from_json(data, default_currency, "photo")
