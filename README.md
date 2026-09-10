@@ -49,13 +49,13 @@ Mount both volumes so the database survives container replacement:
 docker run -d \
   -v nanofinbot-config:/config \
   -v nanofinbot-data:/data \
-  ghcr.io/<owner>/nanofinbot:latest run
+  ghcr.io/arinadi/nanofinbot:latest run
 ```
 
 Run `nfb setup` inside a one-off container first to write the token/group id:
 
 ```bash
-docker run --rm -it -v nanofinbot-config:/config ghcr.io/<owner>/nanofinbot:latest setup
+docker run --rm -it -v nanofinbot-config:/config ghcr.io/arinadi/nanofinbot:latest setup
 ```
 
 ## Documentation
