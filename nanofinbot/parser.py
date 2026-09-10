@@ -22,14 +22,13 @@ _SYMBOL_TO_CODE = {
 }
 
 _INCOME_WORDS = {
-    "income", "salary", "gaji", "received", "refund", "bonus", "cashback",
-    "reimburse", "reimbursement", "jual", "sold", "earn", "masuk", "dapet",
+    "income", "salary", "received", "refund", "bonus", "cashback",
+    "reimburse", "reimbursement", "sold", "earn",
 }
 
 _STRIP_WORDS = {
-    "spend", "spent", "paid", "pay", "buy", "bought", "beli", "bayar", "makan",
-    "belanja", "cost", "fee", "ongkir", "parkir", "for", "on", "at", "the", "a",
-    "an", "with", "to", "of", "in", "and", "transport",
+    "spend", "spent", "paid", "pay", "buy", "bought",
+    "for", "on", "at", "the", "a", "an", "with", "to", "of", "in", "and",
 }
 
 _NUMBER_RE = re.compile(r"\d[\d,]*\.?\d*")

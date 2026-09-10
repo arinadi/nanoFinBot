@@ -42,6 +42,13 @@ def test_currency_code_override():
     assert d.amount_minor == 5000
 
 
+def test_noun_only_input_keeps_description():
+    d = parse("Lunch 15000", "IDR")
+    assert d.amount_minor == 15000
+    assert d.type == "expense"
+    assert d.description == "Lunch"
+
+
 def test_currency_symbol():
     d = parse("Rp 12500", "USD")
     assert d.currency == "IDR"
