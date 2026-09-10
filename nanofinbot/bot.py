@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
+import sys
 from datetime import date, datetime, timezone
 
 from aiogram import Bot, Dispatcher, F
@@ -102,6 +105,29 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
             ]
         )
         await msg.answer(settings.settings_text(cfg), reply_markup=kb)
+
+    @dp.message(Command("update"))
+    async def cmd_update_bot(msg: Message) -> None:
+        from nanofinbot.cli import _classify_update, _repo_root, _save_update_log
+
+        repo = _repo_root()
+        result = await asyncio.to_thread(
+            subprocess.run,
+            ["git", "-C", str(repo), "pull", "--ff-only"],
+            capture_output=True,
+            text=True,
+        )
+        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        _save_update_log(output)
+        state = _classify_update(output, result.returncode)
+        if state == "failed":
+            await msg.answer(output[:4000] or "git pull failed")
+            return
+        await msg.answer(output[:4000])
+        if state == "up-to-date":
+            return
+        await asyncio.sleep(1)
+        os.execv(sys.executable, [sys.executable, "-m", "nanofinbot.cli", "run"])
 
     @dp.message(F.photo)
     async def on_photo_msg(msg: Message) -> None:

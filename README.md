@@ -78,6 +78,20 @@ that group's chat id.
 6. Start the bot (`nfb run`, or the Docker/proot equivalent). On start it posts
    `nanoFinBot ready` plus a provider status line in the group.
 
+## Update
+
+Pull the latest code and auto-restart:
+
+```bash
+nfb update
+```
+
+Or from the group (same behavior — posts the git output, restarts only on real updates):
+
+```
+/update
+```
+
 ## Setup: provider and model
 
 Text entry works out of the box (rules-only parser, no key needed). Photo OCR and
