@@ -26,6 +26,17 @@ def test_mask_key():
     assert settings.mask_key("sk-abc123") == "sk-a…"
 
 
+def test_provider_status_ready():
+    cfg = Config(telegram_token="x")
+    settings.set_text_provider(cfg, "http://x/v1", "m", "k")
+    assert "Provider ready: m" in settings.provider_status_text(cfg)
+
+
+def test_provider_status_not_configured():
+    cfg = Config(telegram_token="x")
+    assert "not configured" in settings.provider_status_text(cfg)
+
+
 async def test_clear_image_provider(tmp_config_dir):
     cfg = Config(telegram_token="x")
     settings.set_text_provider(cfg, "http://x/v1", "m", "k")

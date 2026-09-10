@@ -28,7 +28,7 @@ class ProviderSettings:
 
     @property
     def configured(self) -> bool:
-        return bool(self.base_url and self.api_key)
+        return bool(self.base_url and self.model and self.api_key)
 
 
 @dataclass

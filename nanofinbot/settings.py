@@ -41,3 +41,22 @@ def set_image_provider(cfg: Config, base_url: str, model: str, api_key: str) -> 
 
 def clear_image_provider(cfg: Config) -> None:
     cfg.image_provider = None
+
+
+def provider_status_text(cfg: Config) -> str:
+    p = cfg.provider
+    if p.base_url and p.model and p.api_key:
+        image = cfg.image_provider
+        if image and image.base_url and image.model and image.api_key:
+            return f"Provider ready: {p.model} · image: {image.model}"
+        return f"Provider ready: {p.model} · image: text provider"
+    missing = [
+        name for name, value in (
+            ("base_url", p.base_url), ("model", p.model), ("api_key", p.api_key),
+        ) if not value
+    ]
+    return (
+        f"Provider not configured ({', '.join(missing)} missing). "
+        "Text entry works (rules-only); photo OCR and auto-categorize are disabled. "
+        "Run /settings to configure."
+    )

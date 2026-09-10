@@ -7,9 +7,16 @@ from nanofinbot.config import Config
 async def test_startup_status(fake_bot):
     cfg = Config(telegram_token="x", group_id=123)
     await bot.startup(fake_bot, cfg)
-    assert len(fake_bot.sent) == 1
+    assert len(fake_bot.sent) == 2
     assert fake_bot.sent[0]["chat_id"] == 123
-    assert "nanoFinBot" in fake_bot.sent[0]["text"]
+    assert fake_bot.sent[0]["text"] == "nanoFinBot ready"
+    assert "Provider" in fake_bot.sent[1]["text"]
+
+
+async def test_startup_provider_not_configured(fake_bot):
+    cfg = Config(telegram_token="x", group_id=123)
+    await bot.startup(fake_bot, cfg)
+    assert "not configured" in fake_bot.sent[1]["text"]
 
 
 async def test_no_group(fake_bot):

@@ -28,10 +28,11 @@ RECURRING_FREQUENCIES = ("daily", "weekly", "monthly", "yearly")
 
 
 async def startup(bot: Bot, cfg: Config) -> None:
-    """Send exactly one status message to the configured group on start."""
+    """Send a ready message, then report provider status, to the configured group."""
     if cfg.group_id is None:
         return
     await bot.send_message(cfg.group_id, "nanoFinBot ready")
+    await bot.send_message(cfg.group_id, settings.provider_status_text(cfg))
 
 
 def _current_month_range() -> tuple[str, str]:
