@@ -30,10 +30,10 @@ sequenceDiagram
     B->>G: PDF / CSV document
 ```
 
-## Install
+## Install (source)
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/arinadi/nanoFinBot
 cd nanoFinBot
 python install.py
 nfb setup
@@ -58,6 +58,38 @@ Run `nfb setup` inside a one-off container first to write the token/group id:
 docker run --rm -it -v nanofinbot-config:/config ghcr.io/arinadi/nanofinbot:latest setup
 ```
 
+## Run in proot-distro (Termux on Android)
+
+No Docker and no root — run a full Linux userland on a phone and run nanoFinBot
+inside it. Long polling means no public webhook URL is needed, so it works from
+any network.
+
+1. Install **Termux from F-Droid** (not the deprecated Google Play build).
+2. Install proot-distro and Ubuntu:
+
+   ```bash
+   pkg install proot-distro
+   proot-distro install ubuntu
+   proot-distro login ubuntu
+   ```
+
+3. Inside Ubuntu, install Python and git:
+
+   ```bash
+   apt update && apt install -y python3 git
+   ```
+
+4. Clone and install nanoFinBot:
+
+   ```bash
+   git clone https://github.com/arinadi/nanoFinBot
+   cd nanoFinBot
+   python3 install.py
+   nfb setup
+   nfb run
+   ```
+
 ## Documentation
 
-The full plan (PRD, architecture, tasks) lives in `nanoFinBot_plan/`.
+- Plan (PRD, architecture, nanotasks): `nanoFinBot_plan/`
+- Security/quality audit and fix plan: `docs/`
