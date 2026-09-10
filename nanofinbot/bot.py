@@ -102,6 +102,10 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
                 [InlineKeyboardButton(text="Set text provider", callback_data="setprovider:text")],
                 [InlineKeyboardButton(text="Set image provider", callback_data="setprovider:image")],
                 [InlineKeyboardButton(text="Clear image provider", callback_data="clearimage")],
+                [InlineKeyboardButton(
+                    text=f"Debug mode: {'ON' if cfg.debug else 'OFF'}",
+                    callback_data="debug:toggle",
+                )],
             ]
         )
         await msg.answer(settings.settings_text(cfg), reply_markup=kb)
@@ -182,6 +186,11 @@ def build_dispatcher(bot: Bot, cfg: Config) -> Dispatcher:
             settings.clear_image_provider(cfg)
             save_config(cfg)
             await bot.send_message(chat_id, "Image provider cleared; vision now falls back to the text provider.")
+            return
+        if data == "debug:toggle":
+            state = settings.toggle_debug(cfg)
+            save_config(cfg)
+            await bot.send_message(chat_id, f"Debug mode {'ON' if state else 'OFF'}.")
             return
         if data.startswith("setprovider:"):
             _settings_state[cq.from_user.id] = data.split(":", 1)[1]

@@ -52,9 +52,11 @@ async def _resolve_category_id(draft: Draft) -> int | None:
     return None
 
 
-async def _create_draft_only(cfg: Config, provider, user_id: int, draft: Draft) -> int:
+async def _create_draft_only(
+    cfg: Config, provider, user_id: int, draft: Draft, debug_log: list | None = None
+) -> int:
     if draft.category is None and provider is not None and getattr(provider, "configured", False):
-        draft.category = await categorize(draft, provider)
+        draft.category = await categorize(draft, provider, debug_log)
 
     category_id = await _resolve_category_id(draft)
     return await db.create_draft(
@@ -73,6 +75,17 @@ async def _present_draft(bot, chat_id: int, tx_id: int) -> None:
     await bot.send_message(chat_id, summarize_row(row), reply_markup=_draft_keyboard(tx_id))
 
 
+async def _debug_dump(bot, cfg: Config, chat_id: int, entries: list) -> None:
+    if not cfg.debug or not entries:
+        return
+    for kind, raw in entries:
+        target = cfg.provider if kind != "vision" else (cfg.image_provider or cfg.provider)
+        await bot.send_message(
+            chat_id,
+            f"[debug] {kind}\n{target.base_url} | {target.model}\nraw: {(raw or '')[:3500]}",
+        )
+
+
 async def _present_next(bot, chat_id: int, user_id: int) -> None:
     q = _queue.get(user_id)
     while q:
@@ -87,10 +100,10 @@ async def _present_next(bot, chat_id: int, user_id: int) -> None:
         await bot.send_message(chat_id, "All queued items processed.")
 
 
-async def _parse_text(cfg: Config, provider, text: str) -> Draft:
+async def _parse_text(cfg: Config, provider, text: str, debug_log: list | None = None) -> Draft:
     """LLM-first text parsing with rules fallback (offline-safe)."""
     if provider is not None and getattr(provider, "configured", False):
-        draft = await llm_parse(text, cfg.default_currency, provider)
+        draft = await llm_parse(text, cfg.default_currency, provider, debug_log)
         if draft.amount_minor is not None:
             return draft
     return parse(text, cfg.default_currency)
@@ -102,33 +115,40 @@ async def on_text(bot, cfg: Config, provider, chat_id: int, user_id: int, text: 
         await _apply_edit(bot, cfg, provider, chat_id, user_id, draft_id, text)
         return
 
-    draft = await _parse_text(cfg, provider, text)
+    debug_log: list = []
+    draft = await _parse_text(cfg, provider, text, debug_log)
     if draft.amount_minor is None:
+        await _debug_dump(bot, cfg, chat_id, debug_log)
         await bot.send_message(
             chat_id,
             "I couldn't parse that. Try something like `spend 50 pizza` or `+3500 salary`.",
         )
         return
-    tx_id = await _create_draft_only(cfg, provider, user_id, draft)
+    tx_id = await _create_draft_only(cfg, provider, user_id, draft, debug_log)
+    await _debug_dump(bot, cfg, chat_id, debug_log)
     await _present_draft(bot, chat_id, tx_id)
 
 
 async def on_photo(bot, cfg: Config, provider, chat_id: int, user_id: int, image_bytes: bytes) -> None:
-    draft = await photo_to_draft(image_bytes, cfg.default_currency, provider)
-    tx_id = await _create_draft_only(cfg, provider, user_id, draft)
+    debug_log: list = []
+    draft = await photo_to_draft(image_bytes, cfg.default_currency, provider, debug_log)
+    tx_id = await _create_draft_only(cfg, provider, user_id, draft, debug_log)
+    await _debug_dump(bot, cfg, chat_id, debug_log)
     await _present_draft(bot, chat_id, tx_id)
 
 
 async def on_photos(bot, cfg: Config, provider, chat_id: int, user_id: int, images: list[bytes]) -> None:
     """Create one draft per photo, present the first, queue the rest."""
     ids = []
+    debug_log: list = []
     for image in images:
-        draft = await photo_to_draft(image, cfg.default_currency, provider)
-        ids.append(await _create_draft_only(cfg, provider, user_id, draft))
+        draft = await photo_to_draft(image, cfg.default_currency, provider, debug_log)
+        ids.append(await _create_draft_only(cfg, provider, user_id, draft, debug_log))
     if not ids:
         return
     _queue[user_id] = ids[1:]
     _batch_active.add(user_id)
+    await _debug_dump(bot, cfg, chat_id, debug_log)
     await _present_draft(bot, chat_id, ids[0])
 
 
@@ -166,9 +186,11 @@ async def _apply_edit(bot, cfg: Config, provider, chat_id: int, user_id: int, dr
         await bot.send_message(chat_id, "This item can no longer be edited.")
         return
 
-    draft = await _parse_text(cfg, provider, text)
+    debug_log: list = []
+    draft = await _parse_text(cfg, provider, text, debug_log)
     if draft.amount_minor is None:
         _editing[user_id] = draft_id
+        await _debug_dump(bot, cfg, chat_id, debug_log)
         await bot.send_message(chat_id, "I couldn't parse that edit. Try again.")
         return
 

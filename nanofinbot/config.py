@@ -39,6 +39,7 @@ class Config:
     timezone: str = DEFAULT_TIMEZONE
     provider: ProviderSettings = field(default_factory=ProviderSettings)
     image_provider: ProviderSettings | None = None
+    debug: bool = False
 
 
 def config_dir() -> Path:
@@ -78,6 +79,7 @@ def _from_dict(raw: dict) -> Config:
         timezone=str(raw.get("timezone", DEFAULT_TIMEZONE) or DEFAULT_TIMEZONE),
         provider=_provider_from_dict(raw.get("provider")),
         image_provider=_provider_from_dict(image_provider) if image_provider else None,
+        debug=bool(raw.get("debug", False)),
     )
 
 
@@ -93,6 +95,7 @@ def _to_dict(cfg: Config) -> dict:
         "timezone": cfg.timezone,
         "provider": _provider_to_dict(cfg.provider),
         "image_provider": _provider_to_dict(cfg.image_provider) if cfg.image_provider else None,
+        "debug": cfg.debug,
     }
 
 

@@ -41,6 +41,7 @@ async def photo_to_draft(
     image_bytes: bytes,
     default_currency: str = DEFAULT_CURRENCY,
     provider: Provider | None = None,
+    debug_log: list | None = None,
 ) -> Draft:
     currency = normalize_currency(default_currency, "IDR")
     base = Draft(source="photo", currency=currency)
@@ -59,6 +60,8 @@ async def photo_to_draft(
     except ProviderError:
         base.reason = "provider error"
         return base
+    if debug_log is not None:
+        debug_log.append(("vision", raw))
 
     try:
         data = json.loads(raw)

@@ -37,6 +37,20 @@ def test_provider_status_not_configured():
     assert "not configured" in settings.provider_status_text(cfg)
 
 
+def test_toggle_debug(tmp_config_dir):
+    cfg = Config(telegram_token="x")
+    assert settings.toggle_debug(cfg) is True
+    assert cfg.debug is True
+    assert "Debug mode: ON" in settings.settings_text(cfg)
+
+    path = tmp_config_dir / "config.json"
+    save_config(cfg, path)
+    assert load_config(path).debug is True
+
+    assert settings.toggle_debug(cfg) is False
+    assert "Debug mode: OFF" in settings.settings_text(cfg)
+
+
 async def test_clear_image_provider(tmp_config_dir):
     cfg = Config(telegram_token="x")
     settings.set_text_provider(cfg, "http://x/v1", "m", "k")

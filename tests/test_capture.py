@@ -51,6 +51,29 @@ async def test_text_falls_back_to_rules(fresh_db, fake_bot):
     assert row["description"] == "pizza"
 
 
+async def test_debug_on_sends_raw(fresh_db, fake_bot):
+    c = cfg()
+    c.debug = True
+    provider = ParseProvider(
+        '{"amount": 30, "currency": "USD", "type": "expense", '
+        '"description": "Lunch", "category": "Food"}'
+    )
+    await capture.on_text(fake_bot, c, provider, 1, 1, "lunch at cafe")
+    assert any("[debug] llm_parse" in m["text"] for m in fake_bot.sent)
+    assert any('"amount": 30' in m["text"] for m in fake_bot.sent)
+
+
+async def test_debug_off_sends_no_raw(fresh_db, fake_bot):
+    c = cfg()
+    c.debug = False
+    provider = ParseProvider(
+        '{"amount": 30, "currency": "USD", "type": "expense", '
+        '"description": "Lunch", "category": "Food"}'
+    )
+    await capture.on_text(fake_bot, c, provider, 1, 1, "lunch at cafe")
+    assert not any("[debug]" in m["text"] for m in fake_bot.sent)
+
+
 async def test_save(fresh_db, fake_bot):
     await capture.on_text(fake_bot, cfg(), None, 1, 1, "spend 50 pizza")
     draft_id = await _draft_id()

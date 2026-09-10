@@ -28,6 +28,7 @@ def settings_text(cfg: Config) -> str:
         lines.append(f"Image provider: {format_provider(cfg.image_provider)}")
     else:
         lines.append("Image provider: (falls back to text provider)")
+    lines.append(f"Debug mode: {'ON' if cfg.debug else 'OFF'}")
     return "\n".join(lines)
 
 
@@ -41,6 +42,11 @@ def set_image_provider(cfg: Config, base_url: str, model: str, api_key: str) -> 
 
 def clear_image_provider(cfg: Config) -> None:
     cfg.image_provider = None
+
+
+def toggle_debug(cfg: Config) -> bool:
+    cfg.debug = not cfg.debug
+    return cfg.debug
 
 
 def provider_status_text(cfg: Config) -> str:

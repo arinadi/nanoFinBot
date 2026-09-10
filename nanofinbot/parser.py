@@ -165,7 +165,11 @@ CATEGORY_SYSTEM_PROMPT = (
 )
 
 
-async def categorize(draft: Draft, provider: Provider | None = None) -> str | None:
+async def categorize(
+    draft: Draft,
+    provider: Provider | None = None,
+    debug_log: list | None = None,
+) -> str | None:
     if provider is None or not getattr(provider, "configured", False):
         return None
     user = draft.description or draft.reason or ""
@@ -175,6 +179,8 @@ async def categorize(draft: Draft, provider: Provider | None = None) -> str | No
         raw = await provider.text(CATEGORY_SYSTEM_PROMPT, user, json_mode=True)
     except ProviderError:
         return None
+    if debug_log is not None:
+        debug_log.append(("categorize", raw))
     try:
         data = json.loads(raw)
     except (json.JSONDecodeError, TypeError):
@@ -200,6 +206,7 @@ async def llm_parse(
     text: str,
     default_currency: str = DEFAULT_CURRENCY,
     provider: Provider | None = None,
+    debug_log: list | None = None,
 ) -> Draft:
     base = Draft(source="text", currency=normalize_currency(default_currency, "IDR"))
     if provider is None or not getattr(provider, "configured", False):
@@ -211,6 +218,8 @@ async def llm_parse(
     except ProviderError:
         base.reason = "provider error"
         return base
+    if debug_log is not None:
+        debug_log.append(("llm_parse", raw))
     try:
         data = json.loads(raw)
     except (json.JSONDecodeError, TypeError):
