@@ -57,3 +57,17 @@ def test_version_exits_zero():
     with pytest.raises(SystemExit) as excinfo:
         cli.main(["--version"])
     assert excinfo.value.code == 0
+
+
+def test_update_subcommand_registered():
+    args = cli.build_parser().parse_args(["update"])
+    assert args.command == "update"
+
+
+def test_repo_root_is_checkout():
+    assert (cli._repo_root() / "pyproject.toml").exists()
+
+
+def test_is_alive_dead_pid():
+    assert cli._is_alive(2**31 - 1) is False
+    assert cli._is_alive(0) is False
