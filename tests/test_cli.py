@@ -71,3 +71,9 @@ def test_repo_root_is_checkout():
 def test_is_alive_dead_pid():
     assert cli._is_alive(2**31 - 1) is False
     assert cli._is_alive(0) is False
+
+
+def test_classify_update():
+    assert cli._classify_update("Already up to date.", 0) == "up-to-date"
+    assert cli._classify_update("Updating aaa..bbb\nFast-forward\n file.py | 2 +-", 0) == "updated"
+    assert cli._classify_update("error: Your local changes", 1) == "failed"

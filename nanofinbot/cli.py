@@ -148,12 +148,64 @@ def _relaunch() -> int | None:
     return proc.pid
 
 
+def _save_update_log(text: str) -> None:
+    p = data_dir() / "last_update.log"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text)
+
+
+def _classify_update(output: str, returncode: int) -> str:
+    if returncode != 0:
+        return "failed"
+    if "already up to date" in output.lower():
+        return "up-to-date"
+    return "updated"
+
+
+def _notify_group(text: str) -> None:
+    try:
+        cfg = load_config()
+    except ConfigError:
+        return
+    if not cfg.telegram_token or cfg.group_id is None:
+        return
+
+    from aiogram import Bot
+
+    async def _send() -> None:
+        bot = Bot(token=cfg.telegram_token)
+        try:
+            await bot.send_message(cfg.group_id, text[:4000])
+        finally:
+            await bot.session.close()
+
+    try:
+        asyncio.run(_send())
+    except Exception:
+        pass
+
+
 def cmd_update() -> int:
     repo = _repo_root()
-    result = subprocess.run(["git", "-C", str(repo), "pull", "--ff-only"])
-    if result.returncode != 0:
-        print("git pull failed. Nothing was restarted.", file=sys.stderr)
+    result = subprocess.run(
+        ["git", "-C", str(repo), "pull", "--ff-only"],
+        capture_output=True,
+        text=True,
+    )
+    output = ((result.stdout or "") + (result.stderr or "")).strip()
+    _save_update_log(output)
+
+    state = _classify_update(output, result.returncode)
+    if state == "failed":
+        print("git pull failed.", file=sys.stderr)
+        _notify_group(output or "git pull failed")
         return 1
+
+    _notify_group(output)
+
+    if state == "up-to-date":
+        print("Already up to date. No restart.")
+        return 0
 
     pid = _read_pid()
     if pid is not None and _is_alive(pid):
