@@ -49,7 +49,7 @@ Mount both volumes so the database survives container replacement:
 docker run -d \
   -v nanofinbot-config:/config \
   -v nanofinbot-data:/data \
-  ghcr.io/arinadi/nanofinbot:latest run
+  ghcr.io/arinadi/nanofinbot:latest
 ```
 
 Run `nfb setup` inside a one-off container first to write the token/group id:
@@ -82,10 +82,10 @@ root. Config and the SQLite DB live inside the container's persistent filesystem
    proot-distro run -u nanofinbot nfb -- setup
    ```
 
-4. Start the bot:
+4. Start the bot (runs the image's default `nfb run`):
 
    ```bash
-   proot-distro run -u nanofinbot nfb -- run
+   proot-distro run -u nanofinbot nfb
    ```
 
 The image runs as the non-root `nanofinbot` user; pass `-u nanofinbot` to match.

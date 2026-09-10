@@ -17,3 +17,4 @@ USER nanofinbot
 VOLUME ["/config", "/data"]
 
 ENTRYPOINT ["nfb"]
+CMD ["run"]
