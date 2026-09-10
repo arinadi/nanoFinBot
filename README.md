@@ -62,10 +62,9 @@ that group's chat id.
    bot an **admin** (so it can read messages).
 
 4. Get the group chat id — chat with [@ScanIDBot](https://t.me/ScanIDBot) and
-   follow its steps (no need to invite it to the group; you forward a group message
-   to it). Supergroups have a negative id (e.g. `-1001234567890`) — that is normal.
-   Alternative: once the bot is running, just send `/chatid` in the group and it
-   replies with the id.
+   follow its steps. Supergroups have a negative id (e.g. `-1001234567890`) — that
+   is normal. Alternative: once the bot is running, just send `/chatid` in the group
+   and it replies with the id.
 
 5. Configure nanoFinBot:
 
