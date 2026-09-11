@@ -117,7 +117,7 @@ def main() -> int:
     print(f"  launcher: {launcher}")
     print()
     if sys.platform == "win32":
-        print(f"Add this directory to PATH, then open a new terminal:")
+        print("Add this directory to PATH, then open a new terminal:")
         print(f"  setx PATH \"%PATH%;{bin_dir}\"")
     elif str(bin_dir) not in os.environ.get("PATH", "").split(os.pathsep):
         print(f"Added {bin_dir} to ~/.profile. Open a new shell, or run:")

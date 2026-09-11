@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import tempfile
@@ -130,10 +131,8 @@ def load_config(path: Path | None = None) -> Config:
 def save_config(cfg: Config, path: Path | None = None) -> None:
     p = path or config_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    try:
+    with contextlib.suppress(OSError):
         os.chmod(p.parent, 0o700)
-    except OSError:
-        pass
     payload = json.dumps(_to_dict(cfg), indent=2)
     fd, tmp_name = tempfile.mkstemp(dir=str(p.parent), prefix=".config-", suffix=".tmp")
     try:
@@ -142,8 +141,6 @@ def save_config(cfg: Config, path: Path | None = None) -> None:
             f.write(payload)
         os.replace(tmp_name, p)
     except BaseException:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_name)
-        except OSError:
-            pass
         raise

@@ -120,5 +120,5 @@ class Provider:
         return await self._image.vision(system, image_bytes, json_mode)
 
     @classmethod
-    def from_config(cls, cfg: Config) -> "Provider":
+    def from_config(cls, cfg: Config) -> Provider:
         return cls(cfg.provider, cfg.image_provider)

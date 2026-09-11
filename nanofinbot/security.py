@@ -35,7 +35,8 @@ class AuthMiddleware(BaseMiddleware):
         if isinstance(event, Message):
             if not (is_bootstrap(event.text) or authorized(self.cfg, event.chat.id)):
                 return
-        elif isinstance(event, CallbackQuery):
-            if event.message is None or not authorized(self.cfg, event.message.chat.id):
-                return
+        elif isinstance(event, CallbackQuery) and (
+            event.message is None or not authorized(self.cfg, event.message.chat.id)
+        ):
+            return
         return await handler(event, data)

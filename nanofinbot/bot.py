@@ -6,7 +6,7 @@ import asyncio
 import os
 import subprocess
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
@@ -39,7 +39,7 @@ async def startup(bot: Bot, cfg: Config) -> None:
 
 
 def _current_month_range() -> tuple[str, str]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if now.month == 12:
         nxt = now.replace(year=now.year + 1, month=1, day=1)

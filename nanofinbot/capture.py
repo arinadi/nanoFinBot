@@ -13,7 +13,6 @@ from nanofinbot import db
 from nanofinbot.config import Config
 from nanofinbot.ocr import photo_to_draft
 from nanofinbot.parser import Draft, categorize, llm_parse, parse
-from nanofinbot.provider import Provider
 
 _editing: dict[int, int] = {}
 _queue: dict[int, list[int]] = {}

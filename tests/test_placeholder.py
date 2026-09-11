@@ -1,6 +1,5 @@
 """Placeholder test that proves the async test scaffold works."""
 
-import pytest
 
 
 async def test_placeholder_async():

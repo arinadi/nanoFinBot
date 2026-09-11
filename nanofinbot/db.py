@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import calendar
 import math
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import aiosqlite
@@ -75,11 +75,11 @@ _db_path: Path | None = None
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _dict(row: aiosqlite.Row) -> dict:
-    return {k: row[k] for k in row.keys()}
+    return dict(zip(row.keys(), row))
 
 
 def get_minor_exponent(code: str) -> int:
@@ -106,7 +106,7 @@ def normalize_currency(code: str, default: str) -> str:
 def to_minor(amount: float, code: str) -> int:
     if not math.isfinite(amount):
         raise ValueError("amount must be finite")
-    minor = int(round(amount * (10 ** get_minor_exponent(code))))
+    minor = round(amount * (10 ** get_minor_exponent(code)))
     if abs(minor) > MAX_AMOUNT_MINOR:
         raise ValueError("amount too large")
     return minor

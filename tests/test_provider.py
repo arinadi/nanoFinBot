@@ -6,7 +6,12 @@ import pytest
 from aiohttp import web
 
 from nanofinbot.config import ProviderSettings
-from nanofinbot.provider import Provider, ProviderAuthError, ProviderError, ProviderNotConfigured
+from nanofinbot.provider import (
+    Provider,
+    ProviderAuthError,
+    ProviderError,
+    ProviderNotConfigured,
+)
 
 
 @asynccontextmanager
@@ -39,16 +44,18 @@ async def test_text():
 
 
 async def test_image_provider_override():
-    async with serve(content_app("TEXT-RESULT")) as text_port:
-        async with serve(content_app("IMAGE-RESULT")) as image_port:
-            text_settings = ProviderSettings(base_url=f"http://127.0.0.1:{text_port}/v1", model="t", api_key="k")
-            image_settings = ProviderSettings(base_url=f"http://127.0.0.1:{image_port}/v1", model="i", api_key="k")
+    async with (
+        serve(content_app("TEXT-RESULT")) as text_port,
+        serve(content_app("IMAGE-RESULT")) as image_port,
+    ):
+        text_settings = ProviderSettings(base_url=f"http://127.0.0.1:{text_port}/v1", model="t", api_key="k")
+        image_settings = ProviderSettings(base_url=f"http://127.0.0.1:{image_port}/v1", model="i", api_key="k")
 
-            provider = Provider(text_settings, image_provider=image_settings)
-            assert await provider.vision("sys", b"fake-image") == "IMAGE-RESULT"
+        provider = Provider(text_settings, image_provider=image_settings)
+        assert await provider.vision("sys", b"fake-image") == "IMAGE-RESULT"
 
-            fallback = Provider(text_settings, image_provider=None)
-            assert await fallback.vision("sys", b"fake-image") == "TEXT-RESULT"
+        fallback = Provider(text_settings, image_provider=None)
+        assert await fallback.vision("sys", b"fake-image") == "TEXT-RESULT"
 
 
 async def test_auth_error():

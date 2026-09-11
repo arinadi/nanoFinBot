@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import getpass
 import os
 import signal
@@ -13,7 +14,13 @@ import time
 from pathlib import Path
 
 from nanofinbot import __version__
-from nanofinbot.config import Config, ConfigError, config_dir, data_dir, load_config, save_config
+from nanofinbot.config import (
+    ConfigError,
+    config_dir,
+    data_dir,
+    load_config,
+    save_config,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -83,10 +90,8 @@ def _write_pid() -> None:
 
 
 def _remove_pid() -> None:
-    try:
+    with contextlib.suppress(OSError):
         _pid_path().unlink(missing_ok=True)
-    except OSError:
-        pass
 
 
 def _read_pid() -> int | None:
@@ -120,10 +125,8 @@ def _terminate_and_wait(pid: int) -> None:
         if not _is_alive(pid):
             return
         time.sleep(0.1)
-    try:
+    with contextlib.suppress(OSError):
         os.kill(pid, signal.SIGKILL)
-    except OSError:
-        pass
 
 
 def _relaunch() -> int | None:
@@ -179,10 +182,8 @@ def _notify_group(text: str) -> None:
         finally:
             await bot.session.close()
 
-    try:
+    with contextlib.suppress(Exception):
         asyncio.run(_send())
-    except Exception:
-        pass
 
 
 def cmd_update() -> int:
